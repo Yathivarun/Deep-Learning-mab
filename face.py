@@ -57,32 +57,30 @@ def preprocess_rec(face):
 # ---------------- SCRFD Proper Decode ----------------
 
 def scrfd_postprocess(outputs, frame_shape, thresh=0.4):
-    scores_list = outputs[0::2]
-    boxes_list = outputs[1::2]
-
     h, w, _ = frame_shape
 
     best_score = 0
     best_box = None
 
-    for scores, boxes in zip(scores_list, boxes_list):
-        scores = scores[0]
-        boxes = boxes[0]
+    # SCRFD outputs come as: score0, box0, score1, box1, score2, box2
+    for i in range(0, len(outputs), 2):
+        scores = outputs[i][0]      # (N,)
+        boxes  = outputs[i+1][0]    # (N,4)
 
-        for i in range(scores.shape[0]):
-            s = scores[i]
+        for j in range(scores.shape[0]):
+            s = float(scores[j])
             if s > thresh and s > best_score:
                 best_score = s
-                best_box = boxes[i]
+                best_box = boxes[j]
 
     if best_box is None:
         return None
 
-    # map from 640x640 back to frame size
+    # best_box is now [x1,y1,x2,y2] in 640x640 coords
+    x1, y1, x2, y2 = best_box
+
     scale_x = w / 640.0
     scale_y = h / 640.0
-
-    x1, y1, x2, y2 = best_box
 
     return np.array([
         int(x1 * scale_x),
@@ -90,6 +88,7 @@ def scrfd_postprocess(outputs, frame_shape, thresh=0.4):
         int(x2 * scale_x),
         int(y2 * scale_y),
     ])
+
 
 # ---------------- Main Loop ----------------
 
